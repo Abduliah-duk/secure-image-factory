@@ -1,8 +1,11 @@
-# Stage 1: Build (Add 'as builder' here)
+# Stage 1: Build
 FROM python:3.11-alpine as builder
 WORKDIR /app
 COPY requirements.txt .
-# Install dependencies to the local user directory
+
+# Add this line to upgrade the build tools
+RUN pip install --upgrade pip setuptools wheel
+
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime (Use the SAME version: 3.11)
