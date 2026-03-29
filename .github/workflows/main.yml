@@ -1,46 +1,35 @@
 name: Secure Image Factory
-
 on: [push]
 
 jobs:
   build-and-scan:
     runs-on: ubuntu-latest
-    # Added: Necessary for pushing to GHCR in 2026
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Build Docker Image
-        run: docker build -t my-secure-app:${{ github.sha }} .
+      - name: Build
+        run: docker build -t my-app:${{ github.sha }} .
 
-      - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@v0.35.0 
+      - name: Security Scan
+        # This is the verified 'clean' commit hash from March 25, 2026
+        uses: aquasecurity/trivy-action@57a97c7d9d5f75c2e5353c945761fa62b4056672
         with:
-          image-ref: 'my-secure-app:${{ github.sha }}'
-          format: 'table'
+          image-ref: 'my-app:${{ github.sha }}'
           exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Login to GitHub Container Registry
-        if: success()
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Image
-        if: success()
+      - name: Push
         run: |
-          # Convert the repository name to lowercase to avoid Docker errors
-          IMAGE_ID=ghcr.io/${{ github.repository }}
-          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-          
-          docker tag my-secure-app:${{ github.sha }} $IMAGE_ID:latest
-          docker push $IMAGE_ID:latest
+          REPO=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker tag my-app:${{ github.sha }} $REPO:latest
+          docker push $REPO:latest
